@@ -1,0 +1,1553 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TBCare - Sistem Pemantauan Pengobatan TBC 6 Bulan</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Canvas Confetti CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <!-- Custom Tailwind Config & Fonts -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0fdfa',
+              100: '#ccfbf1',
+              500: '#0e8388',
+              600: '#0c6e72',
+              700: '#0a595c',
+            },
+            accent: {
+              400: '#fb923c',
+              500: '#f4a261',
+              600: '#ea580c',
+            }
+          },
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'Inter', 'system-ui', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background-color: #cbd5e1;
+      border-radius: 9999px;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col justify-between selection:bg-brand-100 selection:text-brand-700">
+
+  <!-- ==================== HEADER (Visible only when logged in) ==================== -->
+  <header id="main-header" class="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm hidden">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        <!-- Brand Logo -->
+        <div class="flex items-center space-x-3 cursor-pointer" onclick="navigateTo('dashboard')">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-teal-400 flex items-center justify-center text-white shadow-md shadow-brand-500/20">
+            <i data-lucide="shield-plus" class="w-6 h-6"></i>
+          </div>
+          <div>
+            <div class="flex items-center space-x-2">
+              <span class="text-xl font-extrabold tracking-tight text-slate-900">TB<span class="text-brand-500">Care</span></span>
+              <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-brand-50 text-brand-600 border border-brand-200">SembuhTB</span>
+            </div>
+            <p class="text-xs text-slate-500 hidden sm:block">6 Bulan Disiplin Menuju Sembuh Total</p>
+          </div>
+        </div>
+
+        <!-- Role Badges & Controls -->
+        <div class="flex items-center gap-2 sm:gap-4">
+          <!-- Active Role Switcher Indicator -->
+          <div class="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-semibold">
+            <button id="role-btn-patient" onclick="switchRole('patient')" class="px-2.5 sm:px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 bg-white shadow-sm text-brand-600">
+              <i data-lucide="user" class="w-3.5 h-3.5"></i>
+              <span class="hidden md:inline">Pasien</span>
+            </button>
+            <button id="role-btn-family" onclick="switchRole('family')" class="px-2.5 sm:px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 text-slate-600 hover:text-slate-900">
+              <i data-lucide="heart-handshake" class="w-3.5 h-3.5"></i>
+              <span class="hidden md:inline">Keluarga (PMO)</span>
+            </button>
+            <button id="role-btn-doctor" onclick="switchRole('doctor')" class="px-2.5 sm:px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 text-slate-600 hover:text-slate-900">
+              <i data-lucide="stethoscope" class="w-3.5 h-3.5"></i>
+              <span class="hidden md:inline">Nakes / Dokter</span>
+            </button>
+          </div>
+
+          <!-- Notification Bell -->
+          <button onclick="showQuickAlert('Pengingat: Jadwal minum obat harian adalah pukul 07:00 WIB. Jaga kesehatan paru Anda!')" class="relative p-2 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition" title="Notifikasi Sistem">
+            <i data-lucide="bell" class="w-5 h-5"></i>
+            <span id="header-notif-badge" class="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-amber-500 rounded-full ring-2 ring-white"></span>
+          </button>
+
+          <!-- Logout Button -->
+          <button onclick="handleLogout()" class="px-3 py-1.5 text-xs font-bold text-rose-600 hover:bg-rose-50 border border-rose-200 rounded-xl transition flex items-center gap-1.5" title="Keluar / Ganti Akun">
+            <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
+            <span class="hidden sm:inline">Keluar</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== SUB-NAV (Tabs for Logged In User) ==================== -->
+  <nav id="main-nav" class="bg-white border-b border-slate-200 sticky top-16 z-30 shadow-xs hidden">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex space-x-1 sm:space-x-4 overflow-x-auto custom-scrollbar py-2 text-sm font-medium">
+        <button id="nav-dashboard" onclick="navigateTo('dashboard')" class="nav-tab px-4 py-2 rounded-xl transition flex items-center gap-2 bg-brand-50 text-brand-600 font-semibold whitespace-nowrap">
+          <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
+          <span>Dashboard Pasien</span>
+        </button>
+        <button id="nav-form" onclick="navigateTo('form')" class="nav-tab px-4 py-2 rounded-xl transition flex items-center gap-2 text-slate-600 hover:bg-slate-100 whitespace-nowrap">
+          <i data-lucide="pill" class="w-4 h-4"></i>
+          <span>Catat Minum Obat</span>
+        </button>
+        <button id="nav-calendar" onclick="navigateTo('calendar')" class="nav-tab px-4 py-2 rounded-xl transition flex items-center gap-2 text-slate-600 hover:bg-slate-100 whitespace-nowrap">
+          <i data-lucide="calendar-check-2" class="w-4 h-4"></i>
+          <span>Kalender & Laporan</span>
+        </button>
+        <button id="nav-monitoring" onclick="navigateTo('monitoring')" class="nav-tab px-4 py-2 rounded-xl transition flex items-center gap-2 text-slate-600 hover:bg-slate-100 whitespace-nowrap">
+          <i data-lucide="activity" class="w-4 h-4"></i>
+          <span id="nav-monitoring-label">Portal Pemantauan PMO/Nakes</span>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ==================== MAIN CONTENT AREA ==================== -->
+  <main class="w-full flex-1">
+
+    <!-- ======================================================== -->
+    <!-- VIEW 0: DEDICATED HALAMAN LOGIN (DEFAULT INITIAL SCREEN)  -->
+    <!-- ======================================================== -->
+    <section id="view-login" class="min-h-[calc(100vh-80px)] flex items-center justify-center py-10 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-teal-50/60 via-slate-50 to-slate-100">
+      <div class="max-w-md w-full space-y-6">
+        
+        <!-- Login Header & Branding -->
+        <div class="text-center">
+          <div class="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-tr from-brand-600 to-teal-400 flex items-center justify-center text-white shadow-xl shadow-brand-500/25 mb-4">
+            <i data-lucide="shield-plus" class="w-9 h-9"></i>
+          </div>
+          <h1 class="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">TB<span class="text-brand-500">Care</span></h1>
+          <p class="text-xs sm:text-sm font-semibold text-brand-700 mt-1 uppercase tracking-wider">6 Bulan Disiplin Menuju Sembuh Total</p>
+          <p class="text-xs text-slate-500 mt-2">Sistem Informasi Terintegrasi Pasien TBC, Keluarga PMO, dan Faskes Puskesmas</p>
+        </div>
+
+        <!-- Login Card -->
+        <div class="bg-white rounded-3xl border border-slate-200/90 shadow-xl shadow-slate-200/50 p-6 sm:p-8">
+          
+          <!-- Role Selector Tabs -->
+          <div class="mb-6">
+            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Pilih Peran Masuk:</label>
+            <div class="grid grid-cols-3 gap-1.5 p-1 bg-slate-100 rounded-2xl text-xs font-semibold text-slate-600">
+              <button type="button" id="login-role-patient" onclick="setLoginRole('patient')" class="py-2 rounded-xl bg-white shadow-sm text-brand-600 font-bold transition flex flex-col sm:flex-row items-center justify-center gap-1">
+                <i data-lucide="user" class="w-3.5 h-3.5"></i>
+                <span>Pasien</span>
+              </button>
+              <button type="button" id="login-role-family" onclick="setLoginRole('family')" class="py-2 rounded-xl hover:text-slate-900 transition flex flex-col sm:flex-row items-center justify-center gap-1">
+                <i data-lucide="heart-handshake" class="w-3.5 h-3.5"></i>
+                <span>Keluarga</span>
+              </button>
+              <button type="button" id="login-role-doctor" onclick="setLoginRole('doctor')" class="py-2 rounded-xl hover:text-slate-900 transition flex flex-col sm:flex-row items-center justify-center gap-1">
+                <i data-lucide="stethoscope" class="w-3.5 h-3.5"></i>
+                <span>Nakes</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Form Input Login -->
+          <form id="login-form" onsubmit="handleLoginSubmit(event)" class="space-y-4">
+            <div>
+              <label id="login-id-label" for="login-id" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                Nomor Rekam Medis (RM) / No. HP
+              </label>
+              <div class="relative">
+                <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                  <i data-lucide="credit-card" class="w-4 h-4"></i>
+                </div>
+                <input type="text" id="login-id" required value="TB-2026-0891" placeholder="Contoh: TB-2026-0891 atau 08123456789" class="w-full pl-10 pr-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-brand-500 focus:outline-none transition">
+              </div>
+            </div>
+
+            <div>
+              <div class="flex items-center justify-between mb-1.5">
+                <label for="login-pin" class="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                  PIN Pengaman (6 Digit)
+                </label>
+                <button type="button" onclick="showQuickAlert('Bantuan: PIN default simulasi demo adalah 123456')" class="text-[11px] font-semibold text-brand-600 hover:underline">
+                  Lupa PIN?
+                </button>
+              </div>
+              <div class="relative">
+                <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                  <i data-lucide="lock" class="w-4 h-4"></i>
+                </div>
+                <input type="password" id="login-pin" required maxlength="6" value="123456" placeholder="Masukkan 6 Digit PIN" class="w-full pl-10 pr-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm text-slate-800 tracking-widest focus:bg-white focus:ring-2 focus:ring-brand-500 focus:outline-none transition">
+              </div>
+            </div>
+
+            <div class="flex items-center justify-between text-xs text-slate-600">
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked class="w-4 h-4 rounded text-brand-600 border-slate-300 focus:ring-brand-500">
+                <span>Ingat akun saya di perangkat ini</span>
+              </label>
+            </div>
+
+            <button type="submit" class="w-full py-3.5 px-4 rounded-2xl font-bold text-white bg-gradient-to-r from-brand-600 to-teal-500 hover:from-brand-700 hover:to-teal-600 shadow-lg shadow-brand-500/25 transition flex items-center justify-center gap-2 text-sm">
+              <i data-lucide="log-in" class="w-4 h-4"></i>
+              <span id="login-btn-text">Masuk ke Sistem Pengobatan</span>
+            </button>
+          </form>
+
+          <!-- Divider -->
+          <div class="relative my-6">
+            <div class="absolute inset-0 flex items-center">
+              <div class="w-full border-t border-slate-200"></div>
+            </div>
+            <div class="relative flex justify-center text-[11px] uppercase tracking-wider">
+              <span class="bg-white px-2.5 text-slate-400 font-semibold">Atau Akses Cepat Simulasi Demo</span>
+            </div>
+          </div>
+
+          <!-- Quick Login Preset Demo Buttons -->
+          <div class="space-y-2">
+            <button type="button" onclick="quickLoginAs('patient')" class="w-full py-2 px-3 text-left rounded-xl bg-slate-50 hover:bg-brand-50/70 border border-slate-200 hover:border-brand-300 transition flex items-center justify-between text-xs">
+              <div class="flex items-center gap-2.5">
+                <span class="w-7 h-7 rounded-lg bg-teal-100 text-brand-700 flex items-center justify-center font-bold text-[11px]">HW</span>
+                <div>
+                  <div class="font-bold text-slate-800">Masuk sbg Pasien: Hendra Wijaya</div>
+                  <div class="text-[10px] text-slate-500">No. RM TB-2026-0891 (Hari ke-48)</div>
+                </div>
+              </div>
+              <i data-lucide="arrow-right" class="w-3.5 h-3.5 text-slate-400"></i>
+            </button>
+
+            <button type="button" onclick="quickLoginAs('family')" class="w-full py-2 px-3 text-left rounded-xl bg-slate-50 hover:bg-rose-50/70 border border-slate-200 hover:border-rose-300 transition flex items-center justify-between text-xs">
+              <div class="flex items-center gap-2.5">
+                <span class="w-7 h-7 rounded-lg bg-rose-100 text-rose-700 flex items-center justify-center font-bold text-[11px]">IR</span>
+                <div>
+                  <div class="font-bold text-slate-800">Masuk sbg Keluarga (PMO): Ibu Rina</div>
+                  <div class="text-[10px] text-slate-500">Pengawas Minum Obat Pasien Hendra</div>
+                </div>
+              </div>
+              <i data-lucide="arrow-right" class="w-3.5 h-3.5 text-slate-400"></i>
+            </button>
+
+            <button type="button" onclick="quickLoginAs('doctor')" class="w-full py-2 px-3 text-left rounded-xl bg-slate-50 hover:bg-blue-50/70 border border-slate-200 hover:border-blue-300 transition flex items-center justify-between text-xs">
+              <div class="flex items-center gap-2.5">
+                <span class="w-7 h-7 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-[11px]">DR</span>
+                <div>
+                  <div class="font-bold text-slate-800">Masuk sbg Tenaga Medis: dr. Siti</div>
+                  <div class="text-[10px] text-slate-500">Poli TB Dot Puskesmas Sukamaju</div>
+                </div>
+              </div>
+              <i data-lucide="arrow-right" class="w-3.5 h-3.5 text-slate-400"></i>
+            </button>
+          </div>
+
+        </div>
+
+        <!-- Login Footer Notice -->
+        <p class="text-center text-xs text-slate-400">
+          Program Nasional Penanggulangan Tuberkulosis (TOSS TBC) • Kemenkes RI
+        </p>
+
+      </div>
+    </section>
+
+    <!-- Content Wrapper for Authenticated Views -->
+    <div id="authenticated-views" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full hidden">
+
+      <!-- ======================================================== -->
+      <!-- VIEW 1: DASHBOARD PASIEN                                 -->
+      <!-- ======================================================== -->
+      <section id="view-dashboard" class="space-y-6">
+        <!-- Patient Identity & Status Banner -->
+        <div class="bg-gradient-to-r from-brand-600 via-teal-600 to-cyan-600 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
+          <div class="absolute -right-12 -bottom-12 opacity-10 text-white pointer-events-none">
+            <i data-lucide="shield-check" class="w-72 h-72"></i>
+          </div>
+          <div class="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+            <div class="space-y-2">
+              <div class="flex items-center gap-2">
+                <span class="bg-white/20 backdrop-blur-sm text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wider">Pasien TBC Terdaftar</span>
+                <span class="text-xs text-white/80">No. RM: TB-2026-0891</span>
+              </div>
+              <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight">Selamat Datang, Hendra Wijaya! 👋</h1>
+              <p class="text-teal-100 text-xs sm:text-sm max-w-xl">
+                Setiap butir obat adalah langkah nyata melindungi paru-paru Anda dan keluarga tercinta. Anda sudah berjuang sejauh ini!
+              </p>
+            </div>
+
+            <!-- Streak Badge -->
+            <div class="bg-white/10 backdrop-blur-md border border-white/20 p-4 rounded-2xl flex items-center gap-4">
+              <div class="w-12 h-12 rounded-xl bg-accent-500 text-white flex items-center justify-center font-bold text-xl shadow-lg">
+                🔥
+              </div>
+              <div>
+                <div class="text-xs uppercase tracking-wider text-teal-100 font-semibold">Streak Kedisiplinan</div>
+                <div class="text-2xl font-black" id="dash-streak">48 Hari</div>
+                <div class="text-xs text-teal-100">Tanpa putus satu hari pun!</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Grid 1: Progress Tracker 180 Days & Next Dose -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          
+          <!-- Progress 180 Hari Card -->
+          <div class="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-sm flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between mb-4">
+                <h2 class="font-bold text-slate-800 text-base flex items-center gap-2">
+                  <i data-lucide="compass" class="w-5 h-5 text-brand-500"></i>
+                  Jalan Kesembuhan (180 Hari)
+                </h2>
+                <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-brand-50 text-brand-600">Fase Lanjutan</span>
+              </div>
+
+              <!-- Progress Arc / Circular Bar Simulation -->
+              <div class="my-4 flex items-center justify-center">
+                <div class="relative w-44 h-44 flex items-center justify-center">
+                  <svg class="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="42" stroke="currentColor" stroke-width="8" class="text-slate-100" fill="transparent" />
+                    <circle id="dash-progress-ring" cx="50" cy="50" r="42" stroke="currentColor" stroke-width="8" stroke-dasharray="264" stroke-dashoffset="193" stroke-linecap="round" class="text-brand-500 transition-all duration-700" fill="transparent" />
+                  </svg>
+                  <div class="absolute flex flex-col items-center text-center">
+                    <span class="text-3xl font-extrabold text-slate-800" id="dash-day-count">Hari 48</span>
+                    <span class="text-xs font-semibold text-slate-400">dari 180 Hari</span>
+                    <span class="text-xs font-bold text-brand-600 mt-1" id="dash-percentage">26.7% Selesai</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="bg-slate-50 rounded-2xl p-3.5 border border-slate-100 text-xs text-slate-600 space-y-1.5">
+              <div class="flex justify-between">
+                <span>Fase Intensif (Bulan 1-2):</span>
+                <span class="font-bold text-emerald-600">✅ Selesai (56/56 hari)</span>
+              </div>
+              <div class="flex justify-between">
+                <span>Sisa Waktu Menuju Tuntas:</span>
+                <span class="font-bold text-slate-800" id="dash-remaining-days">132 Hari</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Today Dose Card -->
+          <div class="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-sm flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between mb-4">
+                <h2 class="font-bold text-slate-800 text-base flex items-center gap-2">
+                  <i data-lucide="clock" class="w-5 h-5 text-brand-500"></i>
+                  Jadwal Dosis Hari Ini
+                </h2>
+                <span id="dash-pill-badge" class="px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200 animate-pulse">
+                  Belum Diminum
+                </span>
+              </div>
+
+              <div class="p-4 rounded-2xl bg-gradient-to-br from-slate-50 to-teal-50/50 border border-teal-100/60 mb-4">
+                <div class="flex items-start justify-between">
+                  <div>
+                    <h3 class="font-bold text-slate-900 text-base">Paket Obat OAT (4FDC)</h3>
+                    <p class="text-xs text-slate-500 mt-0.5">Rifampisin + Isoniazid + Pirazinamid + Etambutol</p>
+                    <div class="mt-3 inline-flex items-center gap-2 text-xs font-semibold text-brand-700 bg-white px-3 py-1.5 rounded-lg border border-brand-200">
+                      <i data-lucide="alarm-clock" class="w-3.5 h-3.5"></i>
+                      <span>Jadwal Harian: 07:00 WIB</span>
+                    </div>
+                  </div>
+                  <div class="w-12 h-12 bg-white rounded-xl shadow-xs border border-slate-200 flex items-center justify-center text-brand-600 font-bold text-sm">
+                    3 Tab
+                  </div>
+                </div>
+              </div>
+
+              <p class="text-xs text-slate-500 leading-relaxed mb-4">
+                <i data-lucide="info" class="w-3.5 h-3.5 inline mr-1 text-brand-500"></i>
+                Minum obat dalam kondisi perut kosong (1 jam sebelum sarapan) untuk penyerapan optimal dan hasil maksimal.
+              </p>
+            </div>
+
+            <div>
+              <button id="dash-cta-drink" onclick="navigateTo('form')" class="w-full py-3.5 px-4 rounded-2xl font-bold text-white bg-gradient-to-r from-brand-600 to-teal-500 hover:from-brand-700 hover:to-teal-600 shadow-md shadow-brand-500/20 transition flex items-center justify-center gap-2">
+                <i data-lucide="check-circle-2" class="w-5 h-5"></i>
+                <span id="dash-cta-text">+ Catat Minum Obat Sekarang</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Family Corner Card -->
+          <div class="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-sm flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between mb-4">
+                <h2 class="font-bold text-slate-800 text-base flex items-center gap-2">
+                  <i data-lucide="heart" class="w-5 h-5 text-rose-500"></i>
+                  Pojok Semangat PMO
+                </h2>
+                <span class="text-xs font-medium text-slate-500">Dukungan Keluarga</span>
+              </div>
+
+              <!-- Family Messages -->
+              <div class="space-y-3" id="dash-cheer-list">
+                <div class="p-3.5 rounded-2xl bg-rose-50/70 border border-rose-100 flex items-start gap-3">
+                  <div class="w-9 h-9 rounded-full bg-rose-200 text-rose-700 font-bold flex items-center justify-center text-xs flex-shrink-0">
+                    IR
+                  </div>
+                  <div>
+                    <div class="flex items-center justify-between">
+                      <span class="text-xs font-bold text-slate-900">Ibu Rina (Istri/PMO)</span>
+                      <span class="text-[10px] text-slate-400">06:45 WIB</span>
+                    </div>
+                    <p class="text-xs text-slate-700 mt-1 italic leading-relaxed">
+                      "Bapak hebat, sudah sebulan lebih tidak pernah telat! Sebentar lagi kita kontrol ke puskesmas. Semangat sembuh ya pak ❤️"
+                    </p>
+                  </div>
+                </div>
+
+                <div class="p-3.5 rounded-2xl bg-teal-50/70 border border-teal-100 flex items-start gap-3">
+                  <div class="w-9 h-9 rounded-full bg-teal-200 text-teal-800 font-bold flex items-center justify-center text-xs flex-shrink-0">
+                    DS
+                  </div>
+                  <div>
+                    <div class="flex items-center justify-between">
+                      <span class="text-xs font-bold text-slate-900">dr. Siti (Puskesmas)</span>
+                      <span class="text-[10px] text-slate-400">Kemarin</span>
+                    </div>
+                    <p class="text-xs text-slate-700 mt-1 text-slate-600 leading-relaxed">
+                      "Hasil evaluasi dahak bulan ke-2 menunjukkan penurunan kuman signifikan. Pertahankan kepatuhan minum obatnya, Pak!"
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
+              <span class="text-xs text-slate-500">Ingin kirim pesan balasan?</span>
+              <button onclick="promptQuickReply()" class="text-xs font-bold text-brand-600 hover:text-brand-700">
+                Kirim Balasan &rarr;
+              </button>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Quick Education & Support Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/80 rounded-3xl p-5 flex items-center justify-between">
+            <div class="flex items-center gap-4">
+              <div class="w-12 h-12 rounded-2xl bg-accent-500 text-white flex items-center justify-center flex-shrink-0 shadow-sm">
+                <i data-lucide="book-open" class="w-6 h-6"></i>
+              </div>
+              <div>
+                <h3 class="font-bold text-slate-900 text-sm">Edukasi: Mengapa Tidak Boleh Putus Obat?</h3>
+                <p class="text-xs text-slate-600 mt-0.5">Bila putus obat, kuman TB bisa kebal (TB-RO) dan masa terapi bertambah jadi 9-24 bulan.</p>
+              </div>
+            </div>
+            <button onclick="openEducationModal()" class="px-3.5 py-2 text-xs font-semibold rounded-xl bg-white border border-amber-300 text-amber-800 hover:bg-amber-100 transition whitespace-nowrap ml-2">
+              Baca
+            </button>
+          </div>
+
+          <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200/80 rounded-3xl p-5 flex items-center justify-between">
+            <div class="flex items-center gap-4">
+              <div class="w-12 h-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center flex-shrink-0 shadow-sm">
+                <i data-lucide="phone-call" class="w-6 h-6"></i>
+              </div>
+              <div>
+                <h3 class="font-bold text-slate-900 text-sm">Konsultasi Efek Samping Obat ke Nakes</h3>
+                <p class="text-xs text-slate-600 mt-0.5">Mual parah atau mata kuning? Hubungi perawat pendamping puskesmas langsung.</p>
+              </div>
+            </div>
+            <button onclick="callNurse()" class="px-3.5 py-2 text-xs font-semibold rounded-xl bg-white border border-blue-300 text-blue-800 hover:bg-blue-100 transition whitespace-nowrap ml-2">
+              Hubungi
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================================================== -->
+      <!-- VIEW 2: FORM INPUT DATA (CATAT OBAT & KELUHAN)            -->
+      <!-- ======================================================== -->
+      <section id="view-form" class="max-w-2xl mx-auto space-y-6 hidden">
+        <div class="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-8">
+          
+          <!-- Header Form -->
+          <div class="border-b border-slate-100 pb-5 mb-6">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-2xl bg-brand-50 text-brand-600 flex items-center justify-center">
+                  <i data-lucide="clipboard-check" class="w-6 h-6"></i>
+                </div>
+                <div>
+                  <h2 class="text-xl font-bold text-slate-900">Form Konfirmasi Minum Obat Harian</h2>
+                  <p class="text-xs text-slate-500">Laporan disinkronkan otomatis ke PMO Keluarga & Tim Puskesmas</p>
+                </div>
+              </div>
+              <span class="text-xs font-bold px-3 py-1 rounded-full bg-slate-100 text-slate-700" id="form-date-today">Hari Ini</span>
+            </div>
+          </div>
+
+          <form id="dose-form" onsubmit="handleDoseSubmit(event)" class="space-y-6">
+            
+            <!-- 1. Waktu Konsumsi Obat -->
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">
+                1. Waktu Konsumsi Obat
+              </label>
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="text-xs text-slate-500 mb-1 block">Waktu Jadwal</label>
+                  <input type="text" value="07:00 WIB (Pagi)" disabled class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm font-medium text-slate-600 cursor-not-allowed">
+                </div>
+                <div>
+                  <label class="text-xs text-slate-500 mb-1 block">Waktu Aktual Minum</label>
+                  <input type="time" id="actual-time" required value="07:15" class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-xs sm:text-sm font-medium text-slate-800 focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                </div>
+              </div>
+            </div>
+
+            <!-- 2. Checklist Jenis Obat -->
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">
+                2. Checklist Dosis Obat (Pastikan Lengkap)
+              </label>
+              <div class="space-y-2.5 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                <label class="flex items-center gap-3 cursor-pointer p-2 rounded-xl hover:bg-white transition">
+                  <input type="checkbox" id="pill-fdc" checked required class="w-5 h-5 text-brand-600 rounded border-slate-300 focus:ring-brand-500">
+                  <div class="text-xs">
+                    <span class="font-bold text-slate-800 block text-sm">Tablet OAT 4FDC Kombinasi Dosis Tetap (3 Tablet)</span>
+                    <span class="text-slate-500">Rifampisin 150mg + INH 75mg + Pirazinamid 400mg + Etambutol 275mg</span>
+                  </div>
+                </label>
+
+                <label class="flex items-center gap-3 cursor-pointer p-2 rounded-xl hover:bg-white transition">
+                  <input type="checkbox" id="pill-vit" checked class="w-5 h-5 text-brand-600 rounded border-slate-300 focus:ring-brand-500">
+                  <div class="text-xs">
+                    <span class="font-bold text-slate-800 block text-sm">Vitamin B6 / Piridoksin (1 Tablet)</span>
+                    <span class="text-slate-500">Mencegah efek kesemutan dan neuropati perifer</span>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <!-- 3. Upload Foto Blister Obat -->
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">
+                3. Foto Bukti Kemasan/Blister Obat (Verifikasi Visual)
+              </label>
+              <div class="border-2 border-dashed border-slate-300 hover:border-brand-500 rounded-2xl p-4 text-center transition cursor-pointer relative bg-slate-50/50" onclick="triggerPhotoUpload()">
+                <input type="file" id="pill-photo" accept="image/*" class="hidden" onchange="handlePhotoPreview(event)">
+                <div id="photo-placeholder" class="py-4">
+                  <div class="w-12 h-12 mx-auto rounded-full bg-brand-50 text-brand-600 flex items-center justify-center mb-2">
+                    <i data-lucide="camera" class="w-6 h-6"></i>
+                  </div>
+                  <p class="text-sm font-semibold text-slate-800">Sentuh untuk Ambil Foto Kemasan Obat</p>
+                  <p class="text-xs text-slate-400 mt-1">Format JPG, PNG (Simulasi pembuktian PMO)</p>
+                </div>
+                <div id="photo-preview-container" class="hidden relative">
+                  <img id="photo-preview-img" src="" alt="Pratinjau Foto Obat" class="h-44 mx-auto rounded-xl object-cover shadow-sm">
+                  <span class="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full absolute bottom-2 left-1/2 -translate-x-1/2 shadow-xs">
+                    <i data-lucide="check" class="w-3.5 h-3.5"></i> Foto Kemasan Berhasil Terlampir
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 4. Skala Gejala / Efek Samping -->
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">
+                4. Bagaimana Kondisi & Keluhan Anda Hari Ini?
+              </label>
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center" id="symptom-selector">
+                <button type="button" onclick="selectSymptom('Segar', this)" class="symptom-btn p-3 rounded-2xl border-2 border-brand-500 bg-brand-50 text-slate-800 font-medium text-xs flex flex-col items-center gap-1 transition">
+                  <span class="text-2xl">😊</span>
+                  <span class="font-bold">Segar / Nyaman</span>
+                </button>
+                <button type="button" onclick="selectSymptom('Mual Ringan', this)" class="symptom-btn p-3 rounded-2xl border-2 border-slate-200 bg-white text-slate-800 font-medium text-xs flex flex-col items-center gap-1 hover:border-slate-300 transition">
+                  <span class="text-2xl">🤢</span>
+                  <span class="font-semibold">Mual Ringan</span>
+                </button>
+                <button type="button" onclick="selectSymptom('Pusing / Lemas', this)" class="symptom-btn p-3 rounded-2xl border-2 border-slate-200 bg-white text-slate-800 font-medium text-xs flex flex-col items-center gap-1 hover:border-slate-300 transition">
+                  <span class="text-2xl">😵</span>
+                  <span class="font-semibold">Pusing / Lemas</span>
+                </button>
+                <button type="button" onclick="selectSymptom('Nyeri Sendi', this)" class="symptom-btn p-3 rounded-2xl border-2 border-slate-200 bg-white text-slate-800 font-medium text-xs flex flex-col items-center gap-1 hover:border-slate-300 transition">
+                  <span class="text-2xl">🦵</span>
+                  <span class="font-semibold">Nyeri Sendi</span>
+                </button>
+              </div>
+              <input type="hidden" id="selected-symptom-val" value="Segar">
+
+              <!-- Catatan Tambahan -->
+              <div class="mt-3">
+                <textarea id="symptom-notes" rows="2" placeholder="Catatan keluhan tambahan untuk dokter (opsional, contoh: urin berwarna kemerahan)..." class="w-full text-xs p-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand-500 focus:outline-none"></textarea>
+              </div>
+            </div>
+
+            <!-- Submit Button -->
+            <div class="pt-2">
+              <button type="submit" class="w-full py-3.5 px-6 rounded-2xl font-bold text-white bg-gradient-to-r from-brand-600 to-teal-500 hover:from-brand-700 hover:to-teal-600 shadow-lg shadow-brand-500/30 transition flex items-center justify-center gap-2 text-base">
+                <i data-lucide="send" class="w-5 h-5"></i>
+                <span>Kirim Konfirmasi Minum Obat Hari Ini</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <!-- ======================================================== -->
+      <!-- VIEW 3: KALENDER KEPATUHAN & LAPORAN REKAP               -->
+      <!-- ======================================================== -->
+      <section id="view-calendar" class="space-y-6 hidden">
+        <!-- Adherence Statistics -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+            <div class="text-xs font-semibold text-slate-500">Tingkat Kepatuhan</div>
+            <div class="text-2xl sm:text-3xl font-black text-emerald-600 mt-1" id="cal-adherence-rate">98.2%</div>
+            <div class="text-[11px] text-slate-400 mt-0.5">Sangat Baik (Standar WHO &gt;90%)</div>
+          </div>
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+            <div class="text-xs font-semibold text-slate-500">Total Dosis Diminum</div>
+            <div class="text-2xl sm:text-3xl font-black text-slate-800 mt-1" id="cal-doses-taken">48 / 180</div>
+            <div class="text-[11px] text-brand-600 font-semibold mt-0.5">26.7% Selesai</div>
+          </div>
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+            <div class="text-xs font-semibold text-slate-500">Dosis Terlambat</div>
+            <div class="text-2xl sm:text-3xl font-black text-amber-500 mt-1">1 Kali</div>
+            <div class="text-[11px] text-slate-400 mt-0.5">&gt; 3 jam dari jadwal</div>
+          </div>
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+            <div class="text-xs font-semibold text-slate-500">Dosis Terlewat (Drop)</div>
+            <div class="text-2xl sm:text-3xl font-black text-emerald-600 mt-1">0 Kali</div>
+            <div class="text-[11px] text-emerald-600 font-semibold mt-0.5">Zero Drop-Out! 🛡️</div>
+          </div>
+        </div>
+
+        <!-- Main Calendar & History Layout -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          
+          <!-- Interactive Adherence Calendar -->
+          <div class="lg:col-span-2 bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm">
+            <div class="flex items-center justify-between mb-6">
+              <div>
+                <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+                  <i data-lucide="calendar" class="w-5 h-5 text-brand-500"></i>
+                  Kalender Kepatuhan Minum Obat
+                </h2>
+                <p class="text-xs text-slate-500">Bulan Ke-2 (Fase Intensif Menuju Fase Lanjutan)</p>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-bold px-3 py-1.5 rounded-xl bg-slate-100 text-slate-700">Oktober 2026</span>
+              </div>
+            </div>
+
+            <!-- Color Legends -->
+            <div class="flex flex-wrap items-center gap-4 text-xs font-medium text-slate-600 mb-6 p-3 bg-slate-50 rounded-xl">
+              <div class="flex items-center gap-1.5">
+                <span class="w-3 h-3 rounded-full bg-emerald-500"></span>
+                <span>Tepat Waktu (&lt; 2 Jam)</span>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <span class="w-3 h-3 rounded-full bg-amber-400"></span>
+                <span>Terlambat Minum</span>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <span class="w-3 h-3 rounded-full bg-rose-500"></span>
+                <span>Terlewat / Bolong</span>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <span class="w-3 h-3 rounded-full bg-slate-200"></span>
+                <span>Jadwal Mendatang</span>
+              </div>
+            </div>
+
+            <!-- Calendar Grid -->
+            <div class="grid grid-cols-7 gap-2 text-center text-xs font-bold text-slate-400 mb-2">
+              <span>MIN</span><span>SEN</span><span>SEL</span><span>RAB</span><span>KAM</span><span>JUM</span><span>SAB</span>
+            </div>
+            <div id="calendar-grid" class="grid grid-cols-7 gap-2">
+              <!-- Dynamically populated days -->
+            </div>
+
+            <div class="mt-6 pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">
+              <span class="text-xs text-slate-500 text-center sm:text-left">Ketuk tanggal di atas untuk rincian waktu minum & catatan keluhan</span>
+              <button onclick="downloadReportModal()" class="px-4 py-2 rounded-xl text-xs font-bold bg-brand-50 text-brand-600 hover:bg-brand-100 flex items-center gap-1.5 transition">
+                <i data-lucide="file-text" class="w-4 h-4"></i>
+                <span>Unduh Rekap PDF Kontrol</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Milestones Card -->
+          <div class="space-y-6">
+            <div class="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm">
+              <h3 class="font-bold text-slate-900 text-base mb-4 flex items-center gap-2">
+                <i data-lucide="milestone" class="w-5 h-5 text-brand-500"></i>
+                Milestone Uji Dahak & Klinis
+              </h3>
+
+              <div class="space-y-4">
+                <div class="flex items-start gap-3">
+                  <div class="w-7 h-7 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center flex-shrink-0 mt-0.5 font-bold text-xs">
+                    ✓
+                  </div>
+                  <div>
+                    <div class="text-xs font-bold text-slate-800">Bulan 0: Diagnosis & Tes Dahak Awal</div>
+                    <p class="text-[11px] text-slate-500">BTA Positif (+2), Memulai Regimen 4FDC</p>
+                    <span class="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-medium mt-1 inline-block">10 Agt 2026</span>
+                  </div>
+                </div>
+
+                <div class="flex items-start gap-3">
+                  <div class="w-7 h-7 rounded-full bg-brand-100 text-brand-600 flex items-center justify-center flex-shrink-0 mt-0.5 font-bold text-xs">
+                    2
+                  </div>
+                  <div>
+                    <div class="text-xs font-bold text-slate-800">Bulan 2: Evaluasi Dahak Akhir Intensif</div>
+                    <p class="text-[11px] text-slate-500">Pemeriksaan Dahak Ulang (Konversi BTA)</p>
+                    <span class="text-[10px] bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded font-bold mt-1 inline-block">Jadwal: 14 Hari Lagi (22 Okt)</span>
+                  </div>
+                </div>
+
+                <div class="flex items-start gap-3">
+                  <div class="w-7 h-7 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center flex-shrink-0 mt-0.5 font-bold text-xs">
+                    5
+                  </div>
+                  <div>
+                    <div class="text-xs font-bold text-slate-400">Bulan 5: Evaluasi Lanjutan</div>
+                    <p class="text-[11px] text-slate-400">Memastikan bakteri dorman tetap steril</p>
+                  </div>
+                </div>
+
+                <div class="flex items-start gap-3">
+                  <div class="w-7 h-7 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center flex-shrink-0 mt-0.5 font-bold text-xs">
+                    6
+                  </div>
+                  <div>
+                    <div class="text-xs font-bold text-slate-400">Bulan 6: Kelulusan Terapi (Sembuh Total)</div>
+                    <p class="text-[11px] text-slate-400">Surat Keterangan Sembuh dari Puskesmas</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Info Box -->
+            <div class="bg-gradient-to-br from-teal-500 to-brand-600 text-white rounded-3xl p-6 shadow-md">
+              <div class="flex items-center gap-2 font-bold text-sm mb-2">
+                <i data-lucide="sparkles" class="w-4 h-4 text-amber-300"></i>
+                <span>Fakta Medis TBC</span>
+              </div>
+              <p class="text-xs text-teal-50 leading-relaxed">
+                Meskipun batuk dan demam biasanya mereda setelah 2-4 minggu minum obat, bakteri TB yang dorman masih ada di dalam paru. Jangan hentikan obat sebelum 180 hari agar tuntas tanpa resistensi!
+              </p>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ======================================================== -->
+      <!-- VIEW 4: PORTAL MONITORING (KELUARGA PMO & NAKES DOKTER)   -->
+      <!-- ======================================================== -->
+      <section id="view-monitoring" class="space-y-6 hidden">
+        
+        <!-- Monitoring Header Switcher -->
+        <div class="bg-white rounded-2xl p-4 border border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <h2 class="font-bold text-slate-900 text-base" id="mon-header-title">Portal Pemantauan Keluarga (PMO)</h2>
+            <p class="text-xs text-slate-500" id="mon-header-subtitle">Memastikan kepatuhan harian pasien Bapak Hendra Wijaya</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs text-slate-400">Peran Aktif:</span>
+            <span id="mon-current-role-tag" class="text-xs font-bold px-3 py-1 rounded-lg bg-brand-50 text-brand-600 border border-brand-200">Keluarga (Ibu Rina)</span>
+          </div>
+        </div>
+
+        <!-- 4A. KELUARGA / PMO CONTENT -->
+        <div id="family-monitoring-panel" class="space-y-6">
+          <div class="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm">
+            <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-slate-100 pb-6 mb-6">
+              <div class="flex items-center gap-4">
+                <div class="w-14 h-14 rounded-2xl bg-brand-100 text-brand-700 flex items-center justify-center font-black text-xl">
+                  HW
+                </div>
+                <div>
+                  <h3 class="font-bold text-slate-900 text-lg">Bapak Hendra Wijaya (52 Thn)</h3>
+                  <p class="text-xs text-slate-500">Hubungan: Suami | Puskesmas Pembina: Puskesmas Sukamaju</p>
+                  <div class="flex items-center gap-2 mt-2">
+                    <span id="pmo-pill-status-tag" class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800">
+                      ⚠️ Belum Konfirmasi Minum Obat Hari Ini
+                    </span>
+                    <span class="text-xs text-slate-400">Jadwal: 07:00 WIB</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Action PMO Buttons -->
+              <div class="flex flex-wrap gap-2">
+                <button onclick="triggerCallWhatsApp()" class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-2 shadow-xs transition">
+                  <i data-lucide="phone" class="w-4 h-4"></i>
+                  <span>Telepon Pasien Langsung</span>
+                </button>
+                <button onclick="openCheerModal()" class="px-4 py-2.5 rounded-xl bg-accent-500 hover:bg-accent-600 text-white text-xs font-bold flex items-center gap-2 shadow-xs transition">
+                  <i data-lucide="heart" class="w-4 h-4"></i>
+                  <span>Kirim Pesan Semangat ❤️</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- PMO Checklist and Medicine Stock -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200">
+                <span class="text-xs font-bold text-slate-700 uppercase tracking-wider block mb-2">Tugas PMO Hari Ini</span>
+                <ul class="text-xs text-slate-600 space-y-2">
+                  <li class="flex items-center gap-2">
+                    <i data-lucide="check-circle" class="w-4 h-4 text-emerald-500"></i>
+                    <span>Sediakan air minum dan 3 tablet 4FDC</span>
+                  </li>
+                  <li class="flex items-center gap-2">
+                    <i data-lucide="check-circle" class="w-4 h-4 text-emerald-500"></i>
+                    <span>Awasi pasien menelan obat langsung</span>
+                  </li>
+                  <li class="flex items-center gap-2">
+                    <i data-lucide="alert-circle" class="w-4 h-4 text-amber-500"></i>
+                    <span>Tanyakan bila ada mual/ruam kulit</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200">
+                <span class="text-xs font-bold text-slate-700 uppercase tracking-wider block mb-2">Stok Obat di Rumah</span>
+                <div class="text-xl font-black text-slate-800">12 Hari Tersisa</div>
+                <p class="text-xs text-slate-500 mt-1">Jadwal ambil obat berikutnya di Puskesmas: <strong>20 Oktober 2026</strong></p>
+              </div>
+
+              <div class="p-4 rounded-2xl bg-teal-50 border border-teal-200">
+                <span class="text-xs font-bold text-brand-700 uppercase tracking-wider block mb-2">Kontak Bidan/Perawat Binaan</span>
+                <div class="text-xs font-bold text-slate-800">Ns. Ratna, S.Kep</div>
+                <p class="text-xs text-slate-600 mt-1">Siap berkonsultasi jika ada muntah berulang pasca minum obat.</p>
+                <button onclick="callNurse()" class="mt-2 text-xs font-bold text-brand-600 hover:underline">Chat via WhatsApp &rarr;</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4B. DOKTER / TENAGA KESEHATAN CONTENT -->
+        <div id="doctor-monitoring-panel" class="space-y-6 hidden">
+          <!-- Overview Cards -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="bg-rose-50 border border-rose-200 p-5 rounded-2xl">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-rose-800 uppercase tracking-wider">Peringatan Drop-Out (&gt;24 Jam)</span>
+                <span class="w-7 h-7 bg-rose-500 text-white rounded-lg flex items-center justify-center font-bold text-xs">1</span>
+              </div>
+              <div class="text-2xl font-black text-rose-900 mt-2">1 Pasien Terlambat</div>
+              <p class="text-xs text-rose-700 mt-1">Perlu kunjungan rumah kader TB wilayah.</p>
+            </div>
+
+            <div class="bg-amber-50 border border-amber-200 p-5 rounded-2xl">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-amber-800 uppercase tracking-wider">Jadwal Uji Dahak Akhir Bulan Ke-2</span>
+                <span class="w-7 h-7 bg-amber-500 text-white rounded-lg flex items-center justify-center font-bold text-xs">3</span>
+              </div>
+              <div class="text-2xl font-black text-amber-900 mt-2">3 Pasien Terjadwal</div>
+              <p class="text-xs text-amber-700 mt-1">Termasuk Hendra Wijaya (14 hari lagi).</p>
+            </div>
+
+            <div class="bg-emerald-50 border border-emerald-200 p-5 rounded-2xl">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-emerald-800 uppercase tracking-wider">Kepatuhan Total Wilayah</span>
+                <span class="w-7 h-7 bg-emerald-600 text-white rounded-lg flex items-center justify-center font-bold text-xs">96%</span>
+              </div>
+              <div class="text-2xl font-black text-emerald-900 mt-2">18 Pasien Binaan</div>
+              <p class="text-xs text-emerald-700 mt-1">17 Pasien dalam indikator kepatuhan hijau.</p>
+            </div>
+          </div>
+
+          <!-- Clinical Cohort Table -->
+          <div class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div>
+                <h3 class="font-bold text-slate-900 text-base">Daftar Kohort Pasien Tuberkulosis (Puskesmas Sukamaju)</h3>
+                <p class="text-xs text-slate-500">Sistem deteksi dini kepatuhan dan pelaporan keluhan efek samping OAT</p>
+              </div>
+              <button onclick="broadcastReminderSMS()" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 transition">
+                <i data-lucide="send" class="w-4 h-4"></i>
+                <span>Blast Peringatan WhatsApp</span>
+              </button>
+            </div>
+
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs">
+                <thead class="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider border-b border-slate-200">
+                  <tr>
+                    <th class="p-4">Nama Pasien / No. RM</th>
+                    <th class="p-4">Fase Pengobatan</th>
+                    <th class="p-4">Status Dosis Hari Ini</th>
+                    <th class="p-4">Kepatuhan</th>
+                    <th class="p-4">Laporan Efek Samping</th>
+                    <th class="p-4 text-right">Aksi Klinis</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 font-medium text-slate-700">
+                  
+                  <!-- Patient 1 (Hendra Wijaya) -->
+                  <tr class="hover:bg-slate-50/80 transition">
+                    <td class="p-4">
+                      <div class="font-bold text-slate-900">Hendra Wijaya</div>
+                      <span class="text-[11px] text-slate-400">TB-2026-0891 • 52 Th</span>
+                    </td>
+                    <td class="p-4">
+                      <span class="px-2.5 py-1 rounded-md bg-brand-50 text-brand-700 font-bold">Hari 48 / 180</span>
+                      <div class="text-[10px] text-slate-400 mt-0.5">Fase Intensif Akhir</div>
+                    </td>
+                    <td class="p-4">
+                      <span id="doc-row-status" class="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800">
+                        Belum Konfirmasi
+                      </span>
+                    </td>
+                    <td class="p-4">
+                      <span class="font-bold text-emerald-600">98.2%</span>
+                      <div class="w-20 bg-slate-200 rounded-full h-1.5 mt-1">
+                        <div class="bg-emerald-500 h-1.5 rounded-full" style="width: 98%"></div>
+                      </div>
+                    </td>
+                    <td class="p-4">
+                      <span id="doc-row-symptom" class="text-slate-600">Mual Ringan (Toleransi)</span>
+                    </td>
+                    <td class="p-4 text-right space-x-1">
+                      <button onclick="pingSinglePatient('Hendra Wijaya')" class="p-2 rounded-lg bg-slate-100 hover:bg-brand-50 hover:text-brand-600 text-slate-600" title="Kirim Pengingat">
+                        <i data-lucide="message-square" class="w-4 h-4"></i>
+                      </button>
+                      <button onclick="navigateTo('calendar')" class="p-2 rounded-lg bg-slate-100 hover:bg-brand-50 hover:text-brand-600 text-slate-600" title="Buka Rekam Medis">
+                        <i data-lucide="eye" class="w-4 h-4"></i>
+                      </button>
+                    </td>
+                  </tr>
+
+                  <!-- Patient 2 -->
+                  <tr class="hover:bg-slate-50/80 transition">
+                    <td class="p-4">
+                      <div class="font-bold text-slate-900">Ahmad Fadillah</div>
+                      <span class="text-[11px] text-slate-400">TB-2026-0742 • 34 Th</span>
+                    </td>
+                    <td class="p-4">
+                      <span class="px-2.5 py-1 rounded-md bg-emerald-50 text-emerald-700 font-bold">Hari 112 / 180</span>
+                      <div class="text-[10px] text-slate-400 mt-0.5">Fase Lanjutan</div>
+                    </td>
+                    <td class="p-4">
+                      <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
+                        Sudah Minum (06:30)
+                      </span>
+                    </td>
+                    <td class="p-4">
+                      <span class="font-bold text-emerald-600">100%</span>
+                      <div class="w-20 bg-slate-200 rounded-full h-1.5 mt-1">
+                        <div class="bg-emerald-500 h-1.5 rounded-full" style="width: 100%"></div>
+                      </div>
+                    </td>
+                    <td class="p-4">
+                      <span class="text-emerald-700">Tidak ada keluhan</span>
+                    </td>
+                    <td class="p-4 text-right space-x-1">
+                      <button class="p-2 rounded-lg bg-slate-100 hover:bg-brand-50 hover:text-brand-600 text-slate-600" title="Kirim Pengingat">
+                        <i data-lucide="message-square" class="w-4 h-4"></i>
+                      </button>
+                      <button onclick="navigateTo('calendar')" class="p-2 rounded-lg bg-slate-100 hover:bg-brand-50 hover:text-brand-600 text-slate-600" title="Buka Rekam Medis">
+                        <i data-lucide="eye" class="w-4 h-4"></i>
+                      </button>
+                    </td>
+                  </tr>
+
+                  <!-- Patient 3 (Overdue Alert) -->
+                  <tr class="hover:bg-slate-50/80 transition bg-rose-50/30">
+                    <td class="p-4">
+                      <div class="font-bold text-rose-900">Siti Nurhaliza</div>
+                      <span class="text-[11px] text-rose-500">TB-2026-0904 • 27 Th</span>
+                    </td>
+                    <td class="p-4">
+                      <span class="px-2.5 py-1 rounded-md bg-rose-100 text-rose-700 font-bold">Hari 19 / 180</span>
+                      <div class="text-[10px] text-rose-500 mt-0.5">Fase Intensif</div>
+                    </td>
+                    <td class="p-4">
+                      <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-800 animate-pulse">
+                        🚨 Terlambat &gt;28 Jam
+                      </span>
+                    </td>
+                    <td class="p-4">
+                      <span class="font-bold text-rose-600">79.0%</span>
+                      <div class="w-20 bg-slate-200 rounded-full h-1.5 mt-1">
+                        <div class="bg-rose-500 h-1.5 rounded-full" style="width: 79%"></div>
+                      </div>
+                    </td>
+                    <td class="p-4">
+                      <span class="text-rose-600 font-bold">Mual hebat & muntah obat</span>
+                    </td>
+                    <td class="p-4 text-right space-x-1">
+                      <button onclick="showQuickAlert('Menghubungi Kader TB Desa untuk home visit Siti Nurhaliza!')" class="p-2 rounded-lg bg-rose-600 text-white hover:bg-rose-700 shadow-xs" title="Tindakan Home Visit">
+                        <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- ==================== MODALS ==================== -->
+
+  <!-- MODAL: SUCCESS CELEBRATION AFTER DOSE CONFIRMATION -->
+  <div id="modal-celebration" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm hidden">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 text-center shadow-2xl transform transition-all scale-95 duration-200">
+      <div class="w-20 h-20 mx-auto rounded-full bg-gradient-to-tr from-brand-500 to-teal-400 text-white flex items-center justify-center text-3xl shadow-lg shadow-brand-500/30 mb-4 animate-bounce">
+        🌟
+      </div>
+      <span class="text-xs font-bold uppercase tracking-wider text-brand-600 bg-brand-50 px-3 py-1 rounded-full">Langkah Hebat Menuju Sembuh Total</span>
+      <h3 class="text-2xl font-black text-slate-900 mt-3">Luar Biasa, Pak Hendra!</h3>
+      <p class="text-xs text-slate-600 mt-2 leading-relaxed">
+        Obat hari ke-48 berhasil diverifikasi. Notifikasi telah dikirimkan otomatis kepada <strong>Ibu Rina (PMO)</strong> dan <strong>dr. Siti (Puskesmas Sukamaju)</strong>.
+      </p>
+
+      <!-- Badge Earned -->
+      <div class="bg-amber-50 border border-amber-200 rounded-2xl p-4 my-5 flex items-center gap-3 text-left">
+        <span class="text-3xl">🏅</span>
+        <div>
+          <div class="text-xs font-bold text-amber-900">Lencana Disiplin: "49 Hari Tanpa Henti"</div>
+          <div class="text-[11px] text-amber-700">Tingkat kepatuhan Anda saat ini 98.2%. Tinggal 131 hari lagi!</div>
+        </div>
+      </div>
+
+      <div class="space-y-2">
+        <button onclick="closeCelebrationModal()" class="w-full py-3 px-4 rounded-xl font-bold text-white bg-brand-600 hover:bg-brand-700 transition shadow-md shadow-brand-500/20 text-sm">
+          Kembali ke Dashboard
+        </button>
+        <button onclick="navigateTo('calendar'); closeCelebrationModal();" class="w-full py-2.5 px-4 rounded-xl font-bold text-slate-600 hover:bg-slate-100 transition text-xs">
+          Lihat Kalender Kepatuhan &rarr;
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: EDUKASI TBC -->
+  <div id="modal-education" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm hidden">
+    <div class="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl relative max-h-[90vh] overflow-y-auto custom-scrollbar">
+      <button onclick="closeEducationModal()" class="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center">
+          <i data-lucide="book-open" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <h3 class="text-lg font-bold text-slate-900">Panduan Pengobatan TBC 6 Bulan</h3>
+          <p class="text-xs text-slate-500">Kementerian Kesehatan RI & Program TOSS TBC</p>
+        </div>
+      </div>
+      <div class="text-xs text-slate-600 space-y-3 leading-relaxed">
+        <div class="p-3 bg-teal-50 rounded-xl border border-teal-100">
+          <span class="font-bold text-teal-800 block text-sm mb-1">1. Mengapa harus 6 bulan tanpa putus?</span>
+          Kuman <em>Mycobacterium tuberculosis</em> memiliki dinding sel sangat tebal. Fase 2 bulan pertama (Intensif) membunuh kuman aktif, dan 4 bulan berikutnya (Lanjutan) membersihkan kuman tidur/dorman.
+        </div>
+        <div class="p-3 bg-rose-50 rounded-xl border border-rose-100">
+          <span class="font-bold text-rose-800 block text-sm mb-1">2. Bahaya Putus Obat (Drop Out)</span>
+          Jika pengobatan terhenti sebelum waktu, kuman akan bermutasi menjadi kebal obat (TB Resisten Obat / TB-RO). Pengobatan TB-RO membutuhkan waktu minimal 9 hingga 24 bulan dengan obat suntik.
+        </div>
+        <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+          <span class="font-bold text-slate-800 block text-sm mb-1">3. Efek Samping Wajar</span>
+          Urin, air mata, atau keringat berwarna kemerahan adalah efek normal dari Rifampisin. Tetap minum obat kecuali timbul mata kuning atau gatal-gatal hebat di kulit.
+        </div>
+      </div>
+      <button onclick="closeEducationModal()" class="w-full mt-6 py-2.5 rounded-xl bg-slate-900 text-white font-bold text-xs hover:bg-slate-800">
+        Saya Mengerti
+      </button>
+    </div>
+  </div>
+
+  <!-- MODAL: DOWNLOAD LAPORAN KONTROL DOKTER -->
+  <div id="modal-report" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm hidden">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 text-center shadow-2xl">
+      <div class="w-16 h-16 mx-auto rounded-2xl bg-brand-50 text-brand-600 flex items-center justify-center mb-3">
+        <i data-lucide="file-check-2" class="w-8 h-8"></i>
+      </div>
+      <h3 class="text-lg font-bold text-slate-900">Unduh Rekap Kepatuhan Obat</h3>
+      <p class="text-xs text-slate-500 mt-1 mb-4">
+        Dokumen rekap harian dapat dicetak atau ditunjukkan ke Dokter saat jadwal kontrol bulanan di Puskesmas.
+      </p>
+      <div class="p-3 bg-slate-50 rounded-xl text-left text-xs text-slate-600 space-y-1 mb-4 border border-slate-200">
+        <div><strong>Nama Pasien:</strong> Hendra Wijaya (TB-2026-0891)</div>
+        <div><strong>Periode Log:</strong> 01 Okt 2026 - 08 Okt 2026 (Hari ke-48)</div>
+        <div><strong>Kepatuhan:</strong> 98.2% (Tepat Waktu)</div>
+        <div><strong>Faskes:</strong> Puskesmas Sukamaju</div>
+      </div>
+      <div class="flex gap-2">
+        <button onclick="closeReportModal()" class="flex-1 py-2.5 text-xs font-bold rounded-xl border border-slate-200 hover:bg-slate-50">
+          Batal
+        </button>
+        <button onclick="simulatePdfDownload()" class="flex-1 py-2.5 text-xs font-bold rounded-xl bg-brand-600 hover:bg-brand-700 text-white shadow-md shadow-brand-500/20">
+          Unduh File PDF
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION CONTAINER -->
+  <div id="toast-box" class="fixed bottom-6 right-6 z-50 transform transition-all duration-300 translate-y-24 opacity-0 pointer-events-none">
+    <div class="bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-xl flex items-center gap-3 border border-slate-700 text-xs font-medium">
+      <span id="toast-icon">ℹ️</span>
+      <span id="toast-text">Pesan aksi</span>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="bg-white border-t border-slate-200 py-6 text-center text-xs text-slate-400">
+    <div class="max-w-7xl mx-auto px-4">
+      <p class="font-medium text-slate-500">TBCare (SembuhTB) • Sistem Informasi Pemantauan Pengobatan Tuberkulosis 180 Hari</p>
+      <p class="mt-1">Dibuat untuk kepatuhan pasien, ketenangan keluarga, dan efisiensi pengawasan tenaga kesehatan.</p>
+    </div>
+  </footer>
+
+  <!-- ==================== JAVASCRIPT LOGIC ==================== -->
+  <script>
+    // State Management
+    const appState = {
+      isLoggedIn: false,
+      loginSelectedRole: 'patient', // 'patient' | 'family' | 'doctor'
+      currentRole: 'patient',
+      currentView: 'dashboard',
+      doseSubmittedToday: false,
+      streakCount: 48,
+      totalDays: 180,
+      currentDay: 48,
+      adherenceRate: 98.2,
+      todaySymptom: 'Segar',
+      todayActualTime: '07:15',
+      calendarData: [
+        { day: 1, status: 'on-time' }, { day: 2, status: 'on-time' },
+        { day: 3, status: 'on-time' }, { day: 4, status: 'delayed' },
+        { day: 5, status: 'on-time' }, { day: 6, status: 'on-time' },
+        { day: 7, status: 'on-time' }, { day: 8, status: 'pending' },
+        { day: 9, status: 'future' }, { day: 10, status: 'future' },
+        { day: 11, status: 'future' }, { day: 12, status: 'future' },
+        { day: 13, status: 'future' }, { day: 14, status: 'future' },
+        { day: 15, status: 'future' }, { day: 16, status: 'future' },
+        { day: 17, status: 'future' }, { day: 18, status: 'future' },
+        { day: 19, status: 'future' }, { day: 20, status: 'future' },
+        { day: 21, status: 'future' }, { day: 22, status: 'future' },
+        { day: 23, status: 'future' }, { day: 24, status: 'future' },
+        { day: 25, status: 'future' }, { day: 26, status: 'future' },
+        { day: 27, status: 'future' }, { day: 28, status: 'future' },
+        { day: 29, status: 'future' }, { day: 30, status: 'future' },
+        { day: 31, status: 'future' },
+      ]
+    };
+
+    // On Load: Application starts at the login page
+    window.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+      renderCalendar();
+      updateDateStrings();
+      // Ensure initial screen is strictly login view
+      showLoginView();
+    });
+
+    function updateDateStrings() {
+      const now = new Date();
+      const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+      const dateEl = document.getElementById('form-date-today');
+      if (dateEl) {
+        dateEl.innerText = now.toLocaleDateString('id-ID', options);
+      }
+    }
+
+    /* ========================================================
+       LOGIN SYSTEM LOGIC
+    ======================================================== */
+    function setLoginRole(role) {
+      appState.loginSelectedRole = role;
+      
+      const pBtn = document.getElementById('login-role-patient');
+      const fBtn = document.getElementById('login-role-family');
+      const dBtn = document.getElementById('login-role-doctor');
+      const idLabel = document.getElementById('login-id-label');
+      const idInput = document.getElementById('login-id');
+
+      // Reset tabs style
+      [pBtn, fBtn, dBtn].forEach(b => {
+        b.className = "py-2 rounded-xl hover:text-slate-900 transition flex flex-col sm:flex-row items-center justify-center gap-1 font-semibold";
+      });
+
+      if (role === 'patient') {
+        pBtn.className = "py-2 rounded-xl bg-white shadow-sm text-brand-600 font-bold transition flex flex-col sm:flex-row items-center justify-center gap-1";
+        idLabel.innerText = "Nomor Rekam Medis (RM) / No. HP Pasien";
+        idInput.value = "TB-2026-0891";
+      } else if (role === 'family') {
+        fBtn.className = "py-2 rounded-xl bg-white shadow-sm text-brand-600 font-bold transition flex flex-col sm:flex-row items-center justify-center gap-1";
+        idLabel.innerText = "Nomor Handphone Terdaftar (Keluarga PMO)";
+        idInput.value = "081298765432";
+      } else if (role === 'doctor') {
+        dBtn.className = "py-2 rounded-xl bg-white shadow-sm text-brand-600 font-bold transition flex flex-col sm:flex-row items-center justify-center gap-1";
+        idLabel.innerText = "NIP / SIP Tenaga Kesehatan Puskesmas";
+        idInput.value = "19890412-2020-01";
+      }
+      lucide.createIcons();
+    }
+
+    function handleLoginSubmit(e) {
+      e.preventDefault();
+      enterApp(appState.loginSelectedRole);
+    }
+
+    function quickLoginAs(role) {
+      setLoginRole(role);
+      enterApp(role);
+    }
+
+    function enterApp(role) {
+      appState.isLoggedIn = true;
+      appState.currentRole = role;
+
+      // Hide Login View, Show App Header, Nav & Authenticated Views
+      document.getElementById('view-login').classList.add('hidden');
+      document.getElementById('main-header').classList.remove('hidden');
+      document.getElementById('main-nav').classList.remove('hidden');
+      document.getElementById('authenticated-views').classList.remove('hidden');
+
+      // Sync role UI
+      switchRole(role);
+
+      // Determine default view
+      if (role === 'patient') {
+        navigateTo('dashboard');
+        showToast("👋 Selamat datang kembali, Pak Hendra!");
+      } else if (role === 'family') {
+        navigateTo('monitoring');
+        showToast("❤️ Selamat datang Ibu Rina (Pengawas Minum Obat)!");
+      } else if (role === 'doctor') {
+        navigateTo('monitoring');
+        showToast("🩺 Selamat datang dr. Siti di Portal Poli TB Dot!");
+      }
+    }
+
+    function handleLogout() {
+      appState.isLoggedIn = false;
+      showLoginView();
+      showToast("🔒 Anda telah berhasil keluar dari sistem.");
+    }
+
+    function showLoginView() {
+      // Hide all authenticated elements
+      document.getElementById('main-header').classList.add('hidden');
+      document.getElementById('main-nav').classList.add('hidden');
+      document.getElementById('authenticated-views').classList.add('hidden');
+
+      // Show dedicated Login view
+      document.getElementById('view-login').classList.remove('hidden');
+      setLoginRole('patient');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    /* ========================================================
+       NAVIGATION & ROLE SWITCHING LOGIC
+    ======================================================== */
+    function navigateTo(viewName) {
+      if (!appState.isLoggedIn) return;
+      appState.currentView = viewName;
+
+      const views = ['dashboard', 'form', 'calendar', 'monitoring'];
+      views.forEach(v => {
+        const el = document.getElementById(`view-${v}`);
+        const navEl = document.getElementById(`nav-${v}`);
+        if (el) {
+          if (v === viewName) {
+            el.classList.remove('hidden');
+          } else {
+            el.classList.add('hidden');
+          }
+        }
+        if (navEl) {
+          if (v === viewName) {
+            navEl.className = "nav-tab px-4 py-2 rounded-xl transition flex items-center gap-2 bg-brand-50 text-brand-600 font-semibold whitespace-nowrap";
+          } else {
+            navEl.className = "nav-tab px-4 py-2 rounded-xl transition flex items-center gap-2 text-slate-600 hover:bg-slate-100 whitespace-nowrap";
+          }
+        }
+      });
+
+      lucide.createIcons();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function switchRole(role) {
+      appState.currentRole = role;
+
+      const patientBtn = document.getElementById('role-btn-patient');
+      const familyBtn = document.getElementById('role-btn-family');
+      const docBtn = document.getElementById('role-btn-doctor');
+      const familyPanel = document.getElementById('family-monitoring-panel');
+      const doctorPanel = document.getElementById('doctor-monitoring-panel');
+      const monTag = document.getElementById('mon-current-role-tag');
+      const monTitle = document.getElementById('mon-header-title');
+      const monSubtitle = document.getElementById('mon-header-subtitle');
+
+      // Reset button styles
+      [patientBtn, familyBtn, docBtn].forEach(btn => {
+        btn.className = "px-2.5 sm:px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 text-slate-600 hover:text-slate-900";
+      });
+
+      if (role === 'patient') {
+        patientBtn.className = "px-2.5 sm:px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 bg-white shadow-sm text-brand-600";
+      } else if (role === 'family') {
+        familyBtn.className = "px-2.5 sm:px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 bg-white shadow-sm text-brand-600";
+        familyPanel.classList.remove('hidden');
+        doctorPanel.classList.add('hidden');
+        monTag.innerText = "Keluarga / PMO (Ibu Rina)";
+        monTitle.innerText = "Portal Pemantauan Keluarga (PMO)";
+        monSubtitle.innerText = "Memastikan kepatuhan harian Bapak Hendra Wijaya";
+      } else if (role === 'doctor') {
+        docBtn.className = "px-2.5 sm:px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 bg-white shadow-sm text-brand-600";
+        familyPanel.classList.add('hidden');
+        doctorPanel.classList.remove('hidden');
+        monTag.innerText = "Tenaga Medis (dr. Siti - Puskesmas)";
+        monTitle.innerText = "Dashboard Klinis & Early Warning System TBC";
+        monSubtitle.innerText = "Pengawasan kepatuhan kohort pasien TB wilayah kerja";
+      }
+      lucide.createIcons();
+    }
+
+    /* ========================================================
+       DOSE LOGGING & CONFETTI CELEBRATION
+    ======================================================== */
+    function handleDoseSubmit(e) {
+      e.preventDefault();
+      
+      const timeVal = document.getElementById('actual-time').value || '07:15';
+      const symptomVal = document.getElementById('selected-symptom-val').value;
+      
+      appState.doseSubmittedToday = true;
+      appState.todayActualTime = timeVal;
+      appState.todaySymptom = symptomVal;
+      appState.streakCount = 49;
+      appState.currentDay = 49;
+
+      // Update Dashboard UI
+      const pillBadge = document.getElementById('dash-pill-badge');
+      pillBadge.className = "px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200";
+      pillBadge.innerHTML = "✅ Sudah Diminum (Hari Ini)";
+
+      const ctaBtn = document.getElementById('dash-cta-drink');
+      ctaBtn.className = "w-full py-3.5 px-4 rounded-2xl font-bold text-emerald-800 bg-emerald-100 border border-emerald-300 transition flex items-center justify-center gap-2 cursor-default";
+      document.getElementById('dash-cta-text').innerText = `Tercatat Diminum pukul ${timeVal} WIB`;
+
+      document.getElementById('dash-streak').innerText = `${appState.streakCount} Hari`;
+      document.getElementById('dash-day-count').innerText = `Hari ${appState.currentDay}`;
+      
+      // Update circular arc progress
+      const remainingDays = appState.totalDays - appState.currentDay;
+      document.getElementById('dash-remaining-days').innerText = `${remainingDays} Hari`;
+      const pct = ((appState.currentDay / appState.totalDays) * 100).toFixed(1);
+      document.getElementById('dash-percentage').innerText = `${pct}% Selesai`;
+
+      // Update Adherence Calendar
+      const day8 = appState.calendarData.find(d => d.day === 8);
+      if (day8) day8.status = 'on-time';
+      renderCalendar();
+
+      // Update PMO & Doctor Panel
+      const pmoBadge = document.getElementById('pmo-pill-status-tag');
+      if (pmoBadge) {
+        pmoBadge.className = "text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800";
+        pmoBadge.innerHTML = `✅ Sudah Minum Obat Pukul ${timeVal} WIB`;
+      }
+
+      const docRow = document.getElementById('doc-row-status');
+      if (docRow) {
+        docRow.className = "px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800";
+        docRow.innerHTML = `Sudah Minum (${timeVal})`;
+      }
+      const docSym = document.getElementById('doc-row-symptom');
+      if (docSym) {
+        docSym.innerText = `${symptomVal} (Tercatat)`;
+      }
+
+      // Confetti & Celebration Modal
+      triggerConfetti();
+      document.getElementById('modal-celebration').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function triggerConfetti() {
+      try {
+        confetti({
+          particleCount: 90,
+          spread: 75,
+          origin: { y: 0.6 }
+        });
+      } catch (err) {
+        console.log('Confetti triggered');
+      }
+    }
+
+    function closeCelebrationModal() {
+      document.getElementById('modal-celebration').classList.add('hidden');
+      navigateTo('dashboard');
+    }
+
+    function triggerPhotoUpload() {
+      document.getElementById('pill-photo').click();
+    }
+
+    function handlePhotoPreview(e) {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+          document.getElementById('photo-preview-img').src = evt.target.result;
+          document.getElementById('photo-placeholder').classList.add('hidden');
+          document.getElementById('photo-preview-container').classList.remove('hidden');
+          showToast("📷 Foto kemasan obat berhasil diunggah!");
+          lucide.createIcons();
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+
+    function selectSymptom(name, btn) {
+      document.querySelectorAll('.symptom-btn').forEach(b => {
+        b.className = "symptom-btn p-3 rounded-2xl border-2 border-slate-200 bg-white text-slate-800 font-medium text-xs flex flex-col items-center gap-1 hover:border-slate-300 transition";
+      });
+      btn.className = "symptom-btn p-3 rounded-2xl border-2 border-brand-500 bg-brand-50 text-slate-800 font-medium text-xs flex flex-col items-center gap-1 transition shadow-xs";
+      document.getElementById('selected-symptom-val').value = name;
+    }
+
+    function renderCalendar() {
+      const grid = document.getElementById('calendar-grid');
+      if (!grid) return;
+      grid.innerHTML = '';
+
+      appState.calendarData.forEach(item => {
+        const dayBox = document.createElement('div');
+        dayBox.className = "aspect-square rounded-2xl flex flex-col items-center justify-center p-1 relative cursor-pointer border transition-all text-xs font-bold";
+
+        let colorStyle = "";
+        let statusLabel = "";
+
+        if (item.status === 'on-time') {
+          colorStyle = "bg-emerald-50 border-emerald-300 text-emerald-800 hover:bg-emerald-100";
+          statusLabel = "Tepat Waktu (07:05)";
+        } else if (item.status === 'delayed') {
+          colorStyle = "bg-amber-50 border-amber-300 text-amber-800 hover:bg-amber-100";
+          statusLabel = "Terlambat (10:30)";
+        } else if (item.status === 'pending') {
+          colorStyle = "bg-brand-50/50 border-brand-300 text-brand-800 ring-2 ring-brand-400";
+          statusLabel = "Hari Ini (Perlu Konfirmasi)";
+        } else {
+          colorStyle = "bg-slate-50 border-slate-200 text-slate-400";
+          statusLabel = "Jadwal Mendatang";
+        }
+
+        dayBox.className += ` ${colorStyle}`;
+        dayBox.innerHTML = `
+          <span>${item.day}</span>
+          ${item.status === 'on-time' ? '<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-0.5"></span>' : ''}
+          ${item.status === 'delayed' ? '<span class="w-1.5 h-1.5 rounded-full bg-amber-500 mt-0.5"></span>' : ''}
+          ${item.status === 'pending' ? '<span class="w-1.5 h-1.5 rounded-full bg-brand-500 animate-ping mt-0.5"></span>' : ''}
+        `;
+
+        dayBox.onclick = () => {
+          showToast(`📅 Tanggal ${item.day} Okt: Status [${statusLabel}]`);
+        };
+
+        grid.appendChild(dayBox);
+      });
+    }
+
+    function showToast(message) {
+      const box = document.getElementById('toast-box');
+      const text = document.getElementById('toast-text');
+      text.innerText = message;
+      box.classList.remove('translate-y-24', 'opacity-0', 'pointer-events-none');
+      
+      setTimeout(() => {
+        box.classList.add('translate-y-24', 'opacity-0', 'pointer-events-none');
+      }, 3200);
+    }
+
+    function showQuickAlert(msg) {
+      showToast(msg);
+    }
+
+    function openEducationModal() {
+      document.getElementById('modal-education').classList.remove('hidden');
+      lucide.createIcons();
+    }
+    function closeEducationModal() {
+      document.getElementById('modal-education').classList.add('hidden');
+    }
+
+    function downloadReportModal() {
+      document.getElementById('modal-report').classList.remove('hidden');
+      lucide.createIcons();
+    }
+    function closeReportModal() {
+      document.getElementById('modal-report').classList.add('hidden');
+    }
+
+    function simulatePdfDownload() {
+      closeReportModal();
+      showToast("📥 Berhasil mengunduh Laporan Rekap Kontrol Pasien (PDF)!");
+    }
+
+    function triggerCallWhatsApp() {
+      showToast("📞 Menghubungi Hendra Wijaya via Panggilan Suara...");
+    }
+
+    function openCheerModal() {
+      const msg = prompt("Ketik kata motivasi untuk Bapak Hendra:", "Semangat minum obatnya ya Pak, kami sekeluarga selalu mendoakan!");
+      if (msg) {
+        showToast("💌 Pesan semangat terkirim ke dashboard pasien!");
+      }
+    }
+
+    function promptQuickReply() {
+      const reply = prompt("Ketik balasan untuk keluarga:", "Terima kasih banyak, obat sudah Bapak minum tepat waktu.");
+      if (reply) {
+        showToast("💬 Balasan terkirim ke WhatsApp Keluarga!");
+      }
+    }
+
+    function callNurse() {
+      showToast("📞 Menghubungi Perawat Puskesmas (Ns. Ratna, S.Kep)...");
+    }
+
+    function broadcastReminderSMS() {
+      showToast("📲 Blast WhatsApp terkirim ke semua pasien yang belum konfirmasi obat!");
+    }
+
+    function pingSinglePatient(name) {
+      showToast(`📲 Pengingat minum obat dikirim ke ${name}!`);
+    }
+  </script>
+</body>
+</html>
